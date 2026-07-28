@@ -4,8 +4,10 @@ import {
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
-import { Category } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, Types } from 'mongoose';
+import { Category, CategoryDocument } from './schemas/category.schema';
+import { Todo, TodoDocument } from '../todos/schemas/todo.schema';
 import {
   SYSTEM_CATEGORIES,
   SYSTEM_CATEGORY_NAMES,
@@ -14,13 +16,16 @@ import {
 
 @Injectable()
 export class CategoriesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    @InjectModel(Category.name) private categoryModel: Model<CategoryDocument>,
+    @InjectModel(Todo.name) private todoModel: Model<TodoDocument>,
+  ) {}
 
   async ensureSystemCategories(userId: string): Promise<void> {
-    const existing = await this.prisma.category.findMany({
-      where: { userId, isSystem: true },
-      select: { slug: true },
-    });
+    const existing = await this.categoryModel
+      .find({ userId, isSystem: true })
+      .select('slug')
+      .lean();
     const existingSlugs = new Set(
       existing.map((category) => category.slug).filter(Boolean),
     );
@@ -31,22 +36,22 @@ export class CategoriesService {
 
     if (missing.length === 0) return;
 
-    await this.prisma.category.createMany({
-      data: missing.map((category) => ({
+    await this.categoryModel.insertMany(
+      missing.map((category) => ({
         userId,
         name: category.name,
         description: category.description,
         slug: category.slug,
         isSystem: true,
       })),
-    });
+    );
   }
 
   async create(
     userId: string,
     name: string,
     description?: string,
-  ): Promise<Category> {
+  ): Promise<CategoryDocument> {
     if (!userId) {
       throw new BadRequestException('User ID is required');
     }
@@ -57,27 +62,25 @@ export class CategoriesService {
       );
     }
 
-    return this.prisma.category.create({
-      data: {
-        userId,
-        name: name.trim(),
-        description,
-        isSystem: false,
-      },
+    return this.categoryModel.create({
+      userId,
+      name: name.trim(),
+      description,
+      isSystem: false,
     });
   }
 
-  async findByUserId(userId: string): Promise<Category[]> {
+  async findByUserId(userId: string): Promise<CategoryDocument[]> {
     await this.ensureSystemCategories(userId);
 
-    const categories = await this.prisma.category.findMany({
-      where: { userId },
-    });
+    const categories = await this.categoryModel.find({ userId });
 
     const systemOrder = SYSTEM_CATEGORIES.map((category) => category.slug);
-    const system = systemOrder
-      .map((slug) => categories.find((category) => category.slug === slug))
-      .filter((category): category is Category => Boolean(category));
+    const system: CategoryDocument[] = [];
+    for (const slug of systemOrder) {
+      const match = categories.find((category) => category.slug === slug);
+      if (match) system.push(match);
+    }
 
     const custom = categories
       .filter((category) => !category.isSystem)
@@ -86,10 +89,12 @@ export class CategoriesService {
     return [...system, ...custom];
   }
 
-  async getDefaultCategory(userId: string): Promise<Category> {
+  async getDefaultCategory(userId: string): Promise<CategoryDocument> {
     await this.ensureSystemCategories(userId);
-    const tasks = await this.prisma.category.findFirst({
-      where: { userId, slug: DEFAULT_CATEGORY_SLUG, isSystem: true },
+    const tasks = await this.categoryModel.findOne({
+      userId,
+      slug: DEFAULT_CATEGORY_SLUG,
+      isSystem: true,
     });
     if (!tasks) {
       throw new NotFoundException('Default Tasks list not found');
@@ -97,10 +102,10 @@ export class CategoriesService {
     return tasks;
   }
 
-  async findByIdForUser(id: string, userId: string): Promise<Category> {
-    const category = await this.prisma.category.findFirst({
-      where: { id, userId },
-    });
+  async findByIdForUser(id: string, userId: string): Promise<CategoryDocument> {
+    const category = Types.ObjectId.isValid(id)
+      ? await this.categoryModel.findOne({ _id: id, userId })
+      : null;
     if (!category) {
       throw new NotFoundException(`Category with id ${id} not found`);
     }
@@ -111,7 +116,7 @@ export class CategoriesService {
     id: string,
     userId: string,
     data: Partial<Pick<Category, 'name' | 'description'>>,
-  ): Promise<Category> {
+  ): Promise<CategoryDocument> {
     const category = await this.findByIdForUser(id, userId);
     if (category.isSystem) {
       throw new ForbiddenException('Built-in lists cannot be edited');
@@ -126,15 +131,14 @@ export class CategoriesService {
       );
     }
 
-    return this.prisma.category.update({
-      where: { id },
-      data: {
-        ...(data.name !== undefined && { name: data.name.trim() }),
-        ...(data.description !== undefined && {
-          description: data.description,
-        }),
-      },
-    });
+    if (data.name !== undefined) {
+      category.name = data.name.trim();
+    }
+    if (data.description !== undefined) {
+      category.description = data.description;
+    }
+
+    return category.save();
   }
 
   async delete(id: string, userId: string): Promise<void> {
@@ -143,7 +147,7 @@ export class CategoriesService {
       throw new ForbiddenException('Built-in lists cannot be deleted');
     }
 
-    await this.prisma.todo.deleteMany({ where: { categoryId: id, userId } });
-    await this.prisma.category.delete({ where: { id } });
+    await this.todoModel.deleteMany({ categoryId: id, userId });
+    await category.deleteOne();
   }
 }

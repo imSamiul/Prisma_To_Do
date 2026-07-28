@@ -1,12 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Todo } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, Types } from 'mongoose';
+import { Todo, TodoDocument } from './schemas/todo.schema';
 import { CategoriesService } from '../categories/categories.service';
 
 @Injectable()
 export class TodosService {
   constructor(
-    private prisma: PrismaService,
+    @InjectModel(Todo.name) private todoModel: Model<TodoDocument>,
     private categoriesService: CategoriesService,
   ) {}
 
@@ -15,7 +16,7 @@ export class TodosService {
     categoryId: string,
     title: string,
     description?: string,
-  ): Promise<Todo> {
+  ): Promise<TodoDocument> {
     const category = await this.categoriesService.findByIdForUser(
       categoryId,
       userId,
@@ -24,45 +25,41 @@ export class TodosService {
     // My Day is a smart list: new tasks land in Tasks and are flagged for today.
     if (category.slug === 'my-day') {
       const tasks = await this.categoriesService.getDefaultCategory(userId);
-      return this.prisma.todo.create({
-        data: {
-          userId,
-          categoryId: tasks.id,
-          title,
-          description,
-          inMyDay: true,
-        },
+      return this.todoModel.create({
+        userId,
+        categoryId: tasks.id,
+        title,
+        description,
+        inMyDay: true,
       });
     }
 
-    return this.prisma.todo.create({
-      data: { userId, categoryId, title, description },
-    });
+    return this.todoModel.create({ userId, categoryId, title, description });
   }
 
   async findAllForUser(
     userId: string,
     options?: { categoryId?: string; view?: string },
-  ): Promise<Todo[]> {
+  ): Promise<TodoDocument[]> {
     if (options?.view === 'my-day') {
-      return this.prisma.todo.findMany({
-        where: { userId, inMyDay: true },
-        orderBy: { createdAt: 'desc' },
-      });
+      return this.todoModel
+        .find({ userId, inMyDay: true })
+        .sort({ createdAt: -1 });
     }
 
-    return this.prisma.todo.findMany({
-      where: {
+    return this.todoModel
+      .find({
         userId,
         ...(options?.categoryId && { categoryId: options.categoryId }),
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+      })
+      .sort({ createdAt: -1 });
   }
 
-  async findByIdForUser(id: string, userId: string): Promise<Todo> {
+  async findByIdForUser(id: string, userId: string): Promise<TodoDocument> {
     // Always scope by authenticated user — never find by id alone
-    const todo = await this.prisma.todo.findFirst({ where: { id, userId } });
+    const todo = Types.ObjectId.isValid(id)
+      ? await this.todoModel.findOne({ _id: id, userId })
+      : null;
     if (!todo) {
       throw new NotFoundException(`Todo with id ${id} not found`);
     }
@@ -73,42 +70,39 @@ export class TodosService {
     id: string,
     userId: string,
     data: Partial<Pick<Todo, 'title' | 'description' | 'completed'>>,
-  ): Promise<Todo> {
-    await this.findByIdForUser(id, userId);
-    return this.prisma.todo.update({ where: { id }, data });
+  ): Promise<TodoDocument> {
+    const todo = await this.findByIdForUser(id, userId);
+    Object.assign(todo, data);
+    return todo.save();
   }
 
   async delete(id: string, userId: string): Promise<void> {
-    await this.findByIdForUser(id, userId);
-    await this.prisma.todo.delete({ where: { id } });
+    const todo = await this.findByIdForUser(id, userId);
+    await todo.deleteOne();
   }
 
-  async toggleComplete(id: string, userId: string): Promise<Todo> {
+  async toggleComplete(id: string, userId: string): Promise<TodoDocument> {
     const todo = await this.findByIdForUser(id, userId);
-    return this.prisma.todo.update({
-      where: { id },
-      data: { completed: !todo.completed },
-    });
+    todo.completed = !todo.completed;
+    return todo.save();
   }
 
   async setMyDay(
     id: string,
     userId: string,
     inMyDay: boolean,
-  ): Promise<Todo> {
-    await this.findByIdForUser(id, userId);
-    return this.prisma.todo.update({
-      where: { id },
-      data: { inMyDay },
-    });
+  ): Promise<TodoDocument> {
+    const todo = await this.findByIdForUser(id, userId);
+    todo.inMyDay = inMyDay;
+    return todo.save();
   }
 
   async moveToCategory(
     id: string,
     userId: string,
     categoryId: string,
-  ): Promise<Todo> {
-    await this.findByIdForUser(id, userId);
+  ): Promise<TodoDocument> {
+    const todo = await this.findByIdForUser(id, userId);
     const category = await this.categoriesService.findByIdForUser(
       categoryId,
       userId,
@@ -116,15 +110,11 @@ export class TodosService {
 
     // My Day is a smart list — flag the task instead of changing its home list.
     if (category.slug === 'my-day') {
-      return this.prisma.todo.update({
-        where: { id },
-        data: { inMyDay: true },
-      });
+      todo.inMyDay = true;
+      return todo.save();
     }
 
-    return this.prisma.todo.update({
-      where: { id },
-      data: { categoryId },
-    });
+    todo.categoryId = category._id as Types.ObjectId;
+    return todo.save();
   }
 }

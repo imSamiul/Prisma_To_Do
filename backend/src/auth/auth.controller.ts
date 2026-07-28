@@ -11,11 +11,12 @@ import {
 import { Throttle } from '@nestjs/throttler';
 import { Response } from 'express';
 import { AuthService } from './auth.service';
-import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
+import { RegisterDto, registerSchema } from './dto/register.dto';
+import { LoginDto, loginSchema } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { AuthUser } from './types/jwt-payload';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 
 const ACCESS_TOKEN_COOKIE = 'access_token';
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
@@ -37,7 +38,7 @@ export class AuthController {
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   async register(
-    @Body() registerDto: RegisterDto,
+    @Body(new ZodValidationPipe(registerSchema)) registerDto: RegisterDto,
   ): Promise<{ message: string }> {
     await this.authService.register(registerDto.email, registerDto.password);
     return { message: 'User registered successfully' };
@@ -47,7 +48,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   async login(
-    @Body() loginDto: LoginDto,
+    @Body(new ZodValidationPipe(loginSchema)) loginDto: LoginDto,
     @Res({ passthrough: true }) response: Response,
   ): Promise<{ message: string; user: { id: string; email: string } }> {
     const { user, accessToken } = await this.authService.login(

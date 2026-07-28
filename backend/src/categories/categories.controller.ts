@@ -8,13 +8,20 @@ import {
   Put,
   UseGuards,
 } from '@nestjs/common';
-import { Category } from '@prisma/client';
 import { CategoriesService } from './categories.service';
+import { CategoryDocument } from './schemas/category.schema';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthUser } from '../auth/types/jwt-payload';
-import { CreateCategoryDto } from './dto/create-category.dto';
-import { UpdateCategoryDto } from './dto/update-category.dto';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import {
+  CreateCategoryDto,
+  createCategorySchema,
+} from './dto/create-category.dto';
+import {
+  UpdateCategoryDto,
+  updateCategorySchema,
+} from './dto/update-category.dto';
 
 @Controller('categories')
 @UseGuards(JwtAuthGuard)
@@ -24,8 +31,9 @@ export class CategoriesController {
   @Post()
   async create(
     @CurrentUser() user: AuthUser,
-    @Body() createCategoryDto: CreateCategoryDto,
-  ): Promise<{ message: string; data: Category }> {
+    @Body(new ZodValidationPipe(createCategorySchema))
+    createCategoryDto: CreateCategoryDto,
+  ): Promise<{ message: string; data: CategoryDocument }> {
     const category = await this.categoriesService.create(
       user.userId,
       createCategoryDto.name,
@@ -38,7 +46,7 @@ export class CategoriesController {
   @Get()
   async findAll(
     @CurrentUser() user: AuthUser,
-  ): Promise<{ message: string; data: Category[] }> {
+  ): Promise<{ message: string; data: CategoryDocument[] }> {
     const categories = await this.categoriesService.findByUserId(user.userId);
     return { message: 'Categories fetched', data: categories };
   }
@@ -47,7 +55,7 @@ export class CategoriesController {
   async findById(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
-  ): Promise<{ message: string; data: Category }> {
+  ): Promise<{ message: string; data: CategoryDocument }> {
     const category = await this.categoriesService.findByIdForUser(
       id,
       user.userId,
@@ -59,8 +67,9 @@ export class CategoriesController {
   async update(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
-    @Body() updateCategoryDto: UpdateCategoryDto,
-  ): Promise<{ message: string; data: Category }> {
+    @Body(new ZodValidationPipe(updateCategorySchema))
+    updateCategoryDto: UpdateCategoryDto,
+  ): Promise<{ message: string; data: CategoryDocument }> {
     const category = await this.categoriesService.update(
       id,
       user.userId,

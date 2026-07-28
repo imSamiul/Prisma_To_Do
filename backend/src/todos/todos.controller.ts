@@ -9,15 +9,16 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { Todo } from '@prisma/client';
 import { TodosService } from './todos.service';
+import { TodoDocument } from './schemas/todo.schema';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthUser } from '../auth/types/jwt-payload';
-import { CreateTodoDto } from './dto/create-todo.dto';
-import { UpdateTodoDto } from './dto/update-todo.dto';
-import { SetMyDayDto } from './dto/set-my-day.dto';
-import { MoveTodoDto } from './dto/move-todo.dto';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { CreateTodoDto, createTodoSchema } from './dto/create-todo.dto';
+import { UpdateTodoDto, updateTodoSchema } from './dto/update-todo.dto';
+import { SetMyDayDto, setMyDaySchema } from './dto/set-my-day.dto';
+import { MoveTodoDto, moveTodoSchema } from './dto/move-todo.dto';
 
 @Controller('todos')
 @UseGuards(JwtAuthGuard)
@@ -27,8 +28,8 @@ export class TodosController {
   @Post()
   async create(
     @CurrentUser() user: AuthUser,
-    @Body() createTodoDto: CreateTodoDto,
-  ): Promise<{ message: string; data: Todo }> {
+    @Body(new ZodValidationPipe(createTodoSchema)) createTodoDto: CreateTodoDto,
+  ): Promise<{ message: string; data: TodoDocument }> {
     const todo = await this.todosService.create(
       user.userId,
       createTodoDto.categoryId,
@@ -44,7 +45,7 @@ export class TodosController {
     @CurrentUser() user: AuthUser,
     @Query('categoryId') categoryId?: string,
     @Query('view') view?: string,
-  ): Promise<{ message: string; data: Todo[] }> {
+  ): Promise<{ message: string; data: TodoDocument[] }> {
     const todos = await this.todosService.findAllForUser(user.userId, {
       categoryId,
       view,
@@ -56,7 +57,7 @@ export class TodosController {
   async findById(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
-  ): Promise<{ message: string; data: Todo }> {
+  ): Promise<{ message: string; data: TodoDocument }> {
     const todo = await this.todosService.findByIdForUser(id, user.userId);
     return { message: 'Todo found', data: todo };
   }
@@ -65,8 +66,8 @@ export class TodosController {
   async update(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
-    @Body() updateTodoDto: UpdateTodoDto,
-  ): Promise<{ message: string; data: Todo }> {
+    @Body(new ZodValidationPipe(updateTodoSchema)) updateTodoDto: UpdateTodoDto,
+  ): Promise<{ message: string; data: TodoDocument }> {
     const todo = await this.todosService.update(
       id,
       user.userId,
@@ -88,7 +89,7 @@ export class TodosController {
   async toggleComplete(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
-  ): Promise<{ message: string; data: Todo }> {
+  ): Promise<{ message: string; data: TodoDocument }> {
     const todo = await this.todosService.toggleComplete(id, user.userId);
     return {
       message: `Todo ${todo.completed ? 'completed' : 'incomplete'} successfully`,
@@ -100,8 +101,8 @@ export class TodosController {
   async setMyDay(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
-    @Body() body: SetMyDayDto,
-  ): Promise<{ message: string; data: Todo }> {
+    @Body(new ZodValidationPipe(setMyDaySchema)) body: SetMyDayDto,
+  ): Promise<{ message: string; data: TodoDocument }> {
     const todo = await this.todosService.setMyDay(
       id,
       user.userId,
@@ -119,8 +120,8 @@ export class TodosController {
   async move(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
-    @Body() body: MoveTodoDto,
-  ): Promise<{ message: string; data: Todo }> {
+    @Body(new ZodValidationPipe(moveTodoSchema)) body: MoveTodoDto,
+  ): Promise<{ message: string; data: TodoDocument }> {
     const todo = await this.todosService.moveToCategory(
       id,
       user.userId,

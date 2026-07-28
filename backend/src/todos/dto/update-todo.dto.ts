@@ -1,18 +1,9 @@
-import { IsBoolean, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { z } from 'zod';
 
-export class UpdateTodoDto {
-  @IsOptional()
-  @IsString()
-  @MinLength(1)
-  @MaxLength(200)
-  title?: string;
+export const updateTodoSchema = z.object({
+  title: z.string().trim().min(1).max(200).optional(),
+  description: z.string().max(2000).optional(),
+  completed: z.boolean().optional(),
+});
 
-  @IsOptional()
-  @IsString()
-  @MaxLength(2000)
-  description?: string;
-
-  @IsOptional()
-  @IsBoolean()
-  completed?: boolean;
-}
+export type UpdateTodoDto = z.infer<typeof updateTodoSchema>;

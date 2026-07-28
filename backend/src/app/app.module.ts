@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { PrismaModule } from '../prisma/prisma.module';
+import { DatabaseModule } from '../database/database.module';
 import { UsersModule } from '../users/users.module';
 import { AuthModule } from '../auth/auth.module';
 import { CategoriesModule } from '../categories/categories.module';
@@ -20,7 +20,7 @@ import { TodosModule } from '../todos/todos.module';
         limit: 100,
       },
     ]),
-    PrismaModule,
+    DatabaseModule,
     UsersModule,
     AuthModule,
     CategoriesModule,
