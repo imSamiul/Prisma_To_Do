@@ -1,0 +1,26 @@
+meta {
+  name: Set My Day
+  type: http
+  seq: 7
+}
+
+put {
+  url: {{baseUrl}}/api/todos/{{todoId}}/my-day
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "inMyDay": true
+  }
+}
+
+docs {
+  # Set My Day
+  Add or remove a todo from My Day (`inMyDay: true | false`).
+}

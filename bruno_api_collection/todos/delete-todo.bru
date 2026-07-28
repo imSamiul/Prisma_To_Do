@@ -1,0 +1,16 @@
+meta {
+  name: Delete Todo
+  type: http
+  seq: 9
+}
+
+delete {
+  url: {{baseUrl}}/api/todos/{{todoId}}
+  body: none
+  auth: none
+}
+
+docs {
+  # Delete Todo
+  Permanently deletes the todo. Uses `todoId` env var.
+}

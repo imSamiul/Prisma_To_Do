@@ -1,0 +1,34 @@
+meta {
+  name: Create Category
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/categories
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Work",
+    "description": "Work-related tasks"
+  }
+}
+
+script:post-response {
+  const body = res.getBody();
+  if (body?.data?.id) {
+    bru.setEnvVar("categoryId", body.data.id);
+  }
+}
+
+docs {
+  # Create Category
+  Creates a custom list. Cannot reuse built-in names (My Day, Important, Tasks).
+}

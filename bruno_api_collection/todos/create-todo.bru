@@ -1,0 +1,36 @@
+meta {
+  name: Create Todo
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/todos
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "title": "Learn NestJS Guards",
+    "description": "Study JwtAuthGuard and ownership checks",
+    "categoryId": "{{categoryId}}"
+  }
+}
+
+script:post-response {
+  const body = res.getBody();
+  if (body?.data?.id) {
+    bru.setEnvVar("todoId", body.data.id);
+  }
+}
+
+docs {
+  # Create Todo
+  Requires `categoryId` (run List Categories first — it auto-fills Tasks id).
+  Creating under My Day category flags the todo as inMyDay and stores it in Tasks.
+}

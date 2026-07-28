@@ -1,0 +1,20 @@
+meta {
+  name: List My Day Todos
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/todos
+  body: none
+  auth: none
+}
+
+params:query {
+  view: my-day
+}
+
+docs {
+  # List My Day Todos
+  Returns todos with `inMyDay: true`.
+}

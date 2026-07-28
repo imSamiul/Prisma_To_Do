@@ -1,0 +1,16 @@
+meta {
+  name: Toggle Complete
+  type: http
+  seq: 6
+}
+
+put {
+  url: {{baseUrl}}/api/todos/{{todoId}}/toggle-complete
+  body: none
+  auth: none
+}
+
+docs {
+  # Toggle Complete
+  Flips `completed` true/false.
+}

@@ -1,0 +1,25 @@
+meta {
+  name: List Categories
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/categories
+  body: none
+  auth: none
+}
+
+script:post-response {
+  const body = res.getBody();
+  if (body?.data?.length) {
+    const tasks = body.data.find((c) => c.slug === "tasks") || body.data[0];
+    bru.setEnvVar("categoryId", tasks.id);
+  }
+}
+
+docs {
+  # List Categories
+  Returns system + custom lists.
+  Saves the Tasks category id into `categoryId` env var for todo requests.
+}

@@ -1,0 +1,28 @@
+meta {
+  name: Update Todo
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{baseUrl}}/api/todos/{{todoId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "title": "Learn NestJS Guards (updated)",
+    "description": "Updated notes",
+    "completed": false
+  }
+}
+
+docs {
+  # Update Todo
+  Partial update: title, description, completed.
+}

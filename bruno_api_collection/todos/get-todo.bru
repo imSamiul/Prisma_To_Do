@@ -1,0 +1,16 @@
+meta {
+  name: Get Todo
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/todos/{{todoId}}
+  body: none
+  auth: none
+}
+
+docs {
+  # Get Todo
+  Fetch one todo by id. Uses `todoId` env var.
+}

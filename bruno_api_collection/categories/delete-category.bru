@@ -1,0 +1,17 @@
+meta {
+  name: Delete Category
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/api/categories/{{categoryId}}
+  body: none
+  auth: none
+}
+
+docs {
+  # Delete Category
+  Custom lists only — also deletes todos in that list.
+  System lists cannot be deleted.
+}

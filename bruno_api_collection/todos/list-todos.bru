@@ -1,0 +1,30 @@
+meta {
+  name: List Todos
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/todos
+  body: none
+  auth: none
+}
+
+params:query {
+  ~categoryId: {{categoryId}}
+  ~view: 
+}
+
+script:post-response {
+  const body = res.getBody();
+  if (body?.data?.length) {
+    bru.setEnvVar("todoId", body.data[0].id);
+  }
+}
+
+docs {
+  # List Todos
+  Optional query params (enable with checkbox in Bruno):
+  - `categoryId` — filter by list
+  - `view=my-day` — only My Day todos
+}

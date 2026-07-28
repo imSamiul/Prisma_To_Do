@@ -1,0 +1,133 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --radius: 0.5rem;
+
+    /* vanilla-cream 900 */
+    --background: 252 250 245;
+    /* hunter-green 200 */
+    --foreground: 22 41 26;
+
+    /* vanilla-cream 800 */
+    --card: 250 246 236;
+    --card-foreground: 22 41 26;
+
+    --popover: 250 246 236;
+    --popover-foreground: 22 41 26;
+
+    /* hunter-green DEFAULT */
+    --primary: 56 102 65;
+    /* vanilla-cream 900 */
+    --primary-foreground: 252 250 245;
+
+    /* sage-green 900 */
+    --secondary: 225 236 218;
+    /* sage-green 100 */
+    --secondary-foreground: 21 30 16;
+
+    /* vanilla-cream 600 */
+    --muted: 244 237 217;
+    /* sage-green 400 */
+    --muted-foreground: 84 121 62;
+
+    /* yellow-green 800 */
+    --accent: 219 233 187;
+    /* yellow-green 200 */
+    --accent-foreground: 69 86 28;
+
+    /* blushed-brick DEFAULT */
+    --destructive: 188 71 73;
+    /* vanilla-cream 900 */
+    --destructive-foreground: 252 250 245;
+
+    /* vanilla-cream 700 */
+    --border: 247 241 226;
+    --input: 247 241 226;
+    /* hunter-green DEFAULT */
+    --ring: 56 102 65;
+
+    /* sidebar */
+    --sidebar-background: 250 246 236;
+    --sidebar-foreground: 22 41 26;
+    --sidebar-primary: 56 102 65;
+    --sidebar-primary-foreground: 252 250 245;
+    --sidebar-accent: 225 236 218;
+    --sidebar-accent-foreground: 21 30 16;
+    --sidebar-border: 247 241 226;
+    --sidebar-ring: 56 102 65;
+  }
+
+  .dark {
+    /* hunter-green 100 */
+    --background: 11 20 13;
+    /* vanilla-cream 900 */
+    --foreground: 252 250 245;
+
+    /* hunter-green 200 */
+    --card: 22 41 26;
+    --card-foreground: 252 250 245;
+
+    --popover: 22 41 26;
+    --popover-foreground: 252 250 245;
+
+    /* hunter-green 700 */
+    --primary: 119 180 131;
+    /* hunter-green 100 */
+    --primary-foreground: 11 20 13;
+
+    /* hunter-green 300 */
+    --secondary: 34 61 39;
+    /* hunter-green 900 */
+    --secondary-foreground: 210 230 214;
+
+    --muted: 34 61 39;
+    /* sage-green 700 */
+    --muted-foreground: 164 198 144;
+
+    /* yellow-green 200 */
+    --accent: 69 86 28;
+    /* yellow-green 900 */
+    --accent-foreground: 237 244 221;
+
+    /* blushed-brick 400 */
+    --destructive: 153 55 57;
+    /* blushed-brick 900 */
+    --destructive-foreground: 242 218 219;
+
+    --border: 34 61 39;
+    --input: 34 61 39;
+    /* hunter-green 700 */
+    --ring: 119 180 131;
+
+    --sidebar-background: 22 41 26;
+    --sidebar-foreground: 252 250 245;
+    --sidebar-primary: 119 180 131;
+    --sidebar-primary-foreground: 11 20 13;
+    --sidebar-accent: 34 61 39;
+    --sidebar-accent-foreground: 210 230 214;
+    --sidebar-border: 34 61 39;
+    --sidebar-ring: 119 180 131;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans), ui-sans-serif, sans-serif;
+    background-image:
+      radial-gradient(circle at top left, rgb(225 236 218 / 0.7), transparent 30rem),
+      linear-gradient(135deg, rgb(252 250 245 / 0.96), rgb(242 232 207 / 0.72));
+    min-height: 100vh;
+  }
+
+  ::selection {
+    @apply bg-primary text-primary-foreground;
+  }
+}

@@ -1,0 +1,29 @@
+meta {
+  name: Login
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/auth/login
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "email": "{{email}}",
+    "password": "{{password}}"
+  }
+}
+
+docs {
+  # Login
+  Sets HTTP-only `access_token` cookie (1 day).
+  Bruno stores the cookie automatically — use it for protected routes.
+  Rate limited: 5 requests / 60 seconds.
+}

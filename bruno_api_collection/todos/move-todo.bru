@@ -1,0 +1,26 @@
+meta {
+  name: Move Todo
+  type: http
+  seq: 8
+}
+
+put {
+  url: {{baseUrl}}/api/todos/{{todoId}}/move
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "categoryId": "{{categoryId}}"
+  }
+}
+
+docs {
+  # Move Todo
+  Move to another list. Moving to My Day sets `inMyDay` instead of changing home list.
+}
