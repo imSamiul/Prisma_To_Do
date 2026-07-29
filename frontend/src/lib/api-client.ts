@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 /**
- * Same-origin requests via Next.js rewrite → backend.
+ * Same-origin requests via the Vite dev proxy (or reverse proxy in prod) → backend.
  * JWT access_token cookie is set/sent automatically with withCredentials.
  */
 const apiClient = axios.create({
@@ -14,7 +14,6 @@ const apiClient = axios.create({
 });
 
 function redirectToLogin() {
-  if (typeof window === 'undefined') return;
   if (!window.location.pathname.startsWith('/login')) {
     window.location.href = '/login';
   }

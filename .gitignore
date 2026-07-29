@@ -12,12 +12,10 @@ backend/coverage/
 backend/src/generated/
 backend/*.tsbuildinfo
 
-# Frontend / Next.js
-frontend/.next/
-frontend/out/
-frontend/build/
-frontend/.turbo/
+# Frontend / Vite
+frontend/dist/
 frontend/*.tsbuildinfo
+frontend/src/routeTree.gen.ts
 
 # Logs
 *.log

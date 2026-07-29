@@ -1,8 +1,5 @@
-'use client';
-
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { Pencil, Trash2 } from 'lucide-react';
 import {
   useCategories,
@@ -16,8 +13,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PageLoader } from '@/components/ui/loader';
 
-export default function CategoriesPage() {
-  const router = useRouter();
+export const Route = createFileRoute('/dashboard/categories')({
+  component: CategoriesPage,
+});
+
+function CategoriesPage() {
+  const navigate = useNavigate();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
@@ -47,7 +48,7 @@ export default function CategoriesPage() {
 
       const newCategoryId = result?.data?.id as string | undefined;
       if (newCategoryId) {
-        router.push(`/dashboard?category=${newCategoryId}`);
+        await navigate({ to: '/dashboard', search: { category: newCategoryId } });
       }
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Failed to create list'));
@@ -176,7 +177,8 @@ export default function CategoriesPage() {
             ) : (
               <div className="flex items-center justify-between gap-3">
                 <Link
-                  href={`/dashboard?category=${category.id}`}
+                  to="/dashboard"
+                  search={{ category: category.id }}
                   className="min-w-0 flex-1 hover:underline"
                 >
                   <p className="font-medium">{category.name}</p>

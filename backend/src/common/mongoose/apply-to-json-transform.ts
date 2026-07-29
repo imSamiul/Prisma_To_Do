@@ -1,4 +1,4 @@
-import { Schema } from 'mongoose';
+import { Schema, Types } from 'mongoose';
 
 /**
  * Makes documents serialize with `id` (string) instead of `_id`/`__v`,
@@ -11,6 +11,14 @@ export function applyToJSONTransform(schema: Schema): void {
     transform: (_doc, ret: Record<string, unknown>) => {
       ret.id = String(ret._id);
       delete ret._id;
+
+      for (const key of Object.keys(ret)) {
+        const value = ret[key];
+        if (value instanceof Types.ObjectId) {
+          ret[key] = String(value);
+        }
+      }
+
       return ret;
     },
   });

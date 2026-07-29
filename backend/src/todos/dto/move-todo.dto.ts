@@ -1,8 +1,6 @@
-import { z } from 'zod';
-import { objectIdSchema } from '../../common/validation/object-id.schema';
+import { IsMongoId } from 'class-validator';
 
-export const moveTodoSchema = z.object({
-  categoryId: objectIdSchema,
-});
-
-export type MoveTodoDto = z.infer<typeof moveTodoSchema>;
+export class MoveTodoDto {
+  @IsMongoId()
+  categoryId!: string;
+}

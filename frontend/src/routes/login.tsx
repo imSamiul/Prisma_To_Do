@@ -1,7 +1,5 @@
-'use client';
-
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { CheckCircle2, Leaf, Loader2 } from 'lucide-react';
 import apiClient from '@/lib/api-client';
 import { getErrorMessage } from '@/lib/get-error-message';
@@ -9,13 +7,17 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 
+export const Route = createFileRoute('/login')({
+  component: LoginPage,
+});
+
 interface LoginResponse {
   message: string;
   user: { id: string; email: string };
 }
 
-export default function LoginPage() {
-  const router = useRouter();
+function LoginPage() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -37,8 +39,7 @@ export default function LoginPage() {
         email,
         password,
       });
-      router.refresh();
-      router.push('/dashboard');
+      await navigate({ to: '/dashboard' });
     } catch (err: unknown) {
       setError(
         getErrorMessage(err, 'Login failed. Please check your credentials.'),
@@ -116,9 +117,9 @@ export default function LoginPage() {
 
         <p className="mt-6 text-center text-sm text-hunter-green-400">
           Don't have an account?{' '}
-          <a href="/register" className="underline underline-offset-4 hover:text-primary">
+          <Link to="/register" className="underline underline-offset-4 hover:text-primary">
             Sign up
-          </a>
+          </Link>
         </p>
         </section>
       </div>

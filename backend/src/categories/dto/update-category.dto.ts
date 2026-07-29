@@ -1,8 +1,14 @@
-import { z } from 'zod';
+import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 
-export const updateCategorySchema = z.object({
-  name: z.string().trim().min(1).max(100).optional(),
-  description: z.string().max(500).optional(),
-});
+export class UpdateCategoryDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  @IsOptional()
+  name?: string;
 
-export type UpdateCategoryDto = z.infer<typeof updateCategorySchema>;
+  @IsString()
+  @IsOptional()
+  @MaxLength(500)
+  description?: string;
+}

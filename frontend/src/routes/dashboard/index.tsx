@@ -1,7 +1,6 @@
-'use client';
-
-import { Suspense, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { createFileRoute } from '@tanstack/react-router';
+import { useState } from 'react';
+import { z } from 'zod';
 import { CheckCircle2, FolderKanban, MoreHorizontal, Pencil, Sun, Trash2 } from 'lucide-react';
 import {
   useCategories,
@@ -34,9 +33,18 @@ import {
 import { Input } from '@/components/ui/input';
 import { Loader, PageLoader } from '@/components/ui/loader';
 
-function TodosPageContent() {
-  const searchParams = useSearchParams();
-  const categoryId = searchParams.get('category') ?? '';
+const dashboardSearchSchema = z.object({
+  category: z.string().optional(),
+});
+
+export const Route = createFileRoute('/dashboard/')({
+  validateSearch: dashboardSearchSchema,
+  component: DashboardPage,
+});
+
+function DashboardPage() {
+  const { category } = Route.useSearch();
+  const categoryId = category ?? '';
 
   const [newTodoTitle, setNewTodoTitle] = useState('');
   const [error, setError] = useState('');
@@ -59,13 +67,17 @@ function TodosPageContent() {
   const isAllTasksView = !categoryId;
   const isMyDayView = activeCategory?.slug === 'my-day';
   const canEditCategory = Boolean(activeCategory && !activeCategory.isSystem);
+  // Stale ?category= id after list cleanup / recreate
+  const isUnknownCategory = Boolean(categoryId) && !activeCategory;
 
   const todosQuery = useTodos(
-    isMyDayView
-      ? { mode: 'my-day' }
-      : isAllTasksView
-        ? { mode: 'all' }
-        : { mode: 'category', categoryId },
+    isUnknownCategory
+      ? { mode: 'all' }
+      : isMyDayView
+        ? { mode: 'my-day' }
+        : isAllTasksView
+          ? { mode: 'all' }
+          : { mode: 'category', categoryId },
   );
 
   const createTodoMutation = useCreateTodoMutation();
@@ -82,13 +94,17 @@ function TodosPageContent() {
   const moveTargets = categories.filter(
     (category) => category.slug !== 'my-day',
   );
+  const categoryNameById = Object.fromEntries(
+    categories.map((category) => [category.id, category.name]),
+  );
 
   async function handleCreateTodo() {
     if (!newTodoTitle.trim()) return;
 
-    const targetCategoryId = isAllTasksView
-      ? defaultCategory?.id
-      : categoryId;
+    const targetCategoryId =
+      isAllTasksView || isUnknownCategory
+        ? defaultCategory?.id
+        : categoryId;
 
     if (!targetCategoryId) {
       setError('Default Tasks list is not ready yet. Refresh and try again.');
@@ -212,15 +228,19 @@ function TodosPageContent() {
 
   const title = isAllTasksView
     ? 'All tasks'
-    : (activeCategory?.name ?? 'List');
+    : isUnknownCategory
+      ? 'List not found'
+      : (activeCategory?.name ?? 'List');
   const subtitle = isAllTasksView
     ? 'Every task across all your lists'
-    : isMyDayView
-      ? 'Tasks you added for today. They still stay in their original list.'
-      : activeCategory?.description ||
-        (activeCategory?.isSystem
-          ? 'Built-in list'
-          : 'Add tasks to this list. You can also move them or send them to My Day.');
+    : isUnknownCategory
+      ? 'This list is no longer available. Pick another list from the sidebar.'
+      : isMyDayView
+        ? 'Tasks you added for today. They still stay in their original list.'
+        : activeCategory?.description ||
+          (activeCategory?.isSystem
+            ? 'Built-in list'
+            : 'Add tasks to this list. You can also move them or send them to My Day.');
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
@@ -298,10 +318,15 @@ function TodosPageContent() {
           onKeyDown={(e) => {
             if (e.key === 'Enter') void handleCreateTodo();
           }}
+          disabled={isUnknownCategory}
         />
         <Button
           onClick={() => void handleCreateTodo()}
-          disabled={createTodoMutation.isPending || !newTodoTitle.trim()}
+          disabled={
+            isUnknownCategory ||
+            createTodoMutation.isPending ||
+            !newTodoTitle.trim()
+          }
         >
           Add
         </Button>
@@ -334,6 +359,7 @@ function TodosPageContent() {
                 <TodoRow
                   key={todo.id}
                   todo={todo}
+                  categoryName={categoryNameById[String(todo.categoryId)]}
                   editingTodoId={editingTodoId}
                   editTodoTitle={editTodoTitle}
                   editTodoDescription={editTodoDescription}
@@ -369,6 +395,7 @@ function TodosPageContent() {
                 <TodoRow
                   key={todo.id}
                   todo={todo}
+                  categoryName={categoryNameById[String(todo.categoryId)]}
                   editingTodoId={editingTodoId}
                   editTodoTitle={editTodoTitle}
                   editTodoDescription={editTodoDescription}
@@ -398,6 +425,7 @@ function TodosPageContent() {
 
 function TodoRow({
   todo,
+  categoryName,
   editingTodoId,
   editTodoTitle,
   editTodoDescription,
@@ -417,6 +445,7 @@ function TodoRow({
   onDelete,
 }: {
   todo: Todo;
+  categoryName?: string;
   editingTodoId: string | null;
   editTodoTitle: string;
   editTodoDescription: string;
@@ -501,6 +530,12 @@ function TodoRow({
                 {todo.description}
               </p>
             ) : null}
+            {categoryName ? (
+              <p className="truncate text-xs text-muted-foreground">
+                {categoryName}
+                {todo.inMyDay ? ' · My Day' : ''}
+              </p>
+            ) : null}
           </div>
 
           <DropdownMenu>
@@ -531,8 +566,15 @@ function TodoRow({
                   {moveTargets.map((category) => (
                     <DropdownMenuItem
                       key={category.id}
-                      disabled={category.id === todo.categoryId || isMoving}
-                      onClick={() => onMove(category.id)}
+                      disabled={
+                        !category.id ||
+                        category.id === String(todo.categoryId) ||
+                        isMoving
+                      }
+                      onSelect={() => {
+                        if (!category.id) return;
+                        onMove(category.id);
+                      }}
                     >
                       {category.name}
                     </DropdownMenuItem>
@@ -568,15 +610,5 @@ function TodoRow({
         </div>
       )}
     </li>
-  );
-}
-
-export default function DashboardPage() {
-  return (
-    <Suspense
-      fallback={<PageLoader label="Loading tasks..." />}
-    >
-      <TodosPageContent />
-    </Suspense>
   );
 }

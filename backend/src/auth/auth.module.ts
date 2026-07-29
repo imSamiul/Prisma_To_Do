@@ -1,17 +1,16 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
-import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { UsersModule } from '../users/users.module';
-import { Category, CategorySchema } from '../categories/schemas/category.schema';
+import { CategoriesModule } from '../categories/categories.module';
 
 @Module({
   imports: [
     UsersModule,
-    MongooseModule.forFeature([{ name: Category.name, schema: CategorySchema }]),
+    forwardRef(() => CategoriesModule),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

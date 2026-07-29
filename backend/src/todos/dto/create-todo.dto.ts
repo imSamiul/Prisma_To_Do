@@ -1,10 +1,22 @@
-import { z } from 'zod';
-import { objectIdSchema } from '../../common/validation/object-id.schema';
+import {
+  IsMongoId,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 
-export const createTodoSchema = z.object({
-  title: z.string().trim().min(1).max(200),
-  description: z.string().max(2000).optional(),
-  categoryId: objectIdSchema,
-});
+export class CreateTodoDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(200)
+  title!: string;
 
-export type CreateTodoDto = z.infer<typeof createTodoSchema>;
+  @IsString()
+  @IsOptional()
+  @MaxLength(2000)
+  description?: string;
+
+  @IsMongoId()
+  categoryId!: string;
+}

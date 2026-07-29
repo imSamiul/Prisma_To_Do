@@ -1,5 +1,3 @@
-'use client';
-
 import { Suspense } from 'react';
 import { Leaf } from 'lucide-react';
 import { AppSidebar } from '@/components/app-sidebar';

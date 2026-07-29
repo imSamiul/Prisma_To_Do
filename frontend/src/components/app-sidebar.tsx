@@ -1,8 +1,5 @@
-'use client';
-
-import { useRef, useState, useSyncExternalStore } from 'react';
-import Link from 'next/link';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useRef, useState } from 'react';
+import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import {
   FolderKanban,
   ListTodo,
@@ -37,14 +34,6 @@ import {
 } from '@/components/ui/sidebar';
 import { Input } from '@/components/ui/input';
 
-function useHasMounted() {
-  return useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false,
-  );
-}
-
 function categoryIcon(category: Category) {
   switch (category.slug) {
     case 'my-day':
@@ -59,16 +48,18 @@ function categoryIcon(category: Category) {
 }
 
 export function AppSidebar() {
-  const hasMounted = useHasMounted();
-  const pathname = usePathname();
-  const router = useRouter();
+  const location = useLocation();
+  const pathname = location.pathname;
+  const selectedCategoryId =
+    typeof (location.search as { category?: unknown }).category === 'string'
+      ? ((location.search as { category?: string }).category ?? '')
+      : '';
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const searchParams = useSearchParams();
-  const selectedCategoryId = searchParams.get('category') ?? '';
   const { data, isPending } = useCategories();
   const createCategoryMutation = useCreateCategoryMutation();
   const updateCategoryMutation = useUpdateCategoryMutation();
-  const categories: Category[] = hasMounted ? (data?.data ?? []) : [];
+  const categories: Category[] = data?.data ?? [];
 
   const [isAddingList, setIsAddingList] = useState(false);
   const [newListName, setNewListName] = useState('');
@@ -79,7 +70,7 @@ export function AppSidebar() {
 
   const systemCategories = categories.filter((category) => category.isSystem);
   const customCategories = categories.filter((category) => !category.isSystem);
-  const showListsLoading = !hasMounted || isPending;
+  const showListsLoading = isPending;
 
   async function handleLogout() {
     try {
@@ -88,8 +79,7 @@ export function AppSidebar() {
       // still leave the app even if logout request fails
     }
     queryClient.clear();
-    router.refresh();
-    router.push('/login');
+    await navigate({ to: '/login' });
   }
 
   function startAddingList() {
@@ -109,7 +99,7 @@ export function AppSidebar() {
 
       const newCategoryId = result?.data?.id as string | undefined;
       if (newCategoryId) {
-        router.push(`/dashboard?category=${newCategoryId}`);
+        await navigate({ to: '/dashboard', search: { category: newCategoryId } });
       }
     } catch {
       // keep input open so the user can retry
@@ -142,7 +132,7 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <Link href="/dashboard">
+              <Link to="/dashboard">
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
                   <ListTodo className="size-4" />
                 </div>
@@ -169,7 +159,7 @@ export function AppSidebar() {
                   isActive={pathname === '/dashboard' && !selectedCategoryId}
                   tooltip="All tasks"
                 >
-                  <Link href="/dashboard">
+                  <Link to="/dashboard">
                     <ListTodo />
                     <span>All tasks</span>
                   </Link>
@@ -196,7 +186,7 @@ export function AppSidebar() {
                         }
                         tooltip={category.name}
                       >
-                        <Link href={`/dashboard?category=${category.id}`}>
+                        <Link to="/dashboard" search={{ category: category.id }}>
                           <Icon />
                           <span>{category.name}</span>
                         </Link>
@@ -212,7 +202,7 @@ export function AppSidebar() {
                   isActive={pathname.startsWith('/dashboard/categories')}
                   tooltip="Manage lists"
                 >
-                  <Link href="/dashboard/categories">
+                  <Link to="/dashboard/categories">
                     <Settings2 />
                     <span>Manage lists</span>
                   </Link>
@@ -275,8 +265,9 @@ export function AppSidebar() {
                           tooltip={`${category.name} (double-click to rename)`}
                         >
                           <Link
-                            href={`/dashboard?category=${category.id}`}
-                            onDoubleClick={(e) => {
+                            to="/dashboard"
+                            search={{ category: category.id }}
+                            onDoubleClick={(e: React.MouseEvent) => {
                               e.preventDefault();
                               startRename(category);
                             }}

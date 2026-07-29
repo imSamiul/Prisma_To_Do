@@ -1,7 +1,5 @@
-'use client';
-
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Leaf, Loader2, Sparkles } from 'lucide-react';
 import apiClient from '@/lib/api-client';
 import { getErrorMessage } from '@/lib/get-error-message';
@@ -9,12 +7,16 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 
+export const Route = createFileRoute('/register')({
+  component: RegisterPage,
+});
+
 interface RegisterResponse {
   message: string;
 }
 
-export default function RegisterPage() {
-  const router = useRouter();
+function RegisterPage() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -23,7 +25,7 @@ export default function RegisterPage() {
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
-    
+
     if (!email || !password || !confirmPassword) {
       setError('Please fill in all fields');
       return;
@@ -49,7 +51,7 @@ export default function RegisterPage() {
       });
 
       // Redirect to login after successful registration
-      router.push('/login');
+      await navigate({ to: '/login' });
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Registration failed. Please try again.'));
     } finally {
@@ -135,9 +137,9 @@ export default function RegisterPage() {
 
         <p className="mt-6 text-center text-sm text-hunter-green-400">
           Already have an account?{' '}
-          <a href="/login" className="underline underline-offset-4 hover:text-primary">
+          <Link to="/login" className="underline underline-offset-4 hover:text-primary">
             Sign in
-          </a>
+          </Link>
         </p>
         </section>
       </div>

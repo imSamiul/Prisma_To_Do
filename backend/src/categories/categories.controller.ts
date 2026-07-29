@@ -13,15 +13,8 @@ import { CategoryDocument } from './schemas/category.schema';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthUser } from '../auth/types/jwt-payload';
-import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
-import {
-  CreateCategoryDto,
-  createCategorySchema,
-} from './dto/create-category.dto';
-import {
-  UpdateCategoryDto,
-  updateCategorySchema,
-} from './dto/update-category.dto';
+import { CreateCategoryDto } from './dto/create-category.dto';
+import { UpdateCategoryDto } from './dto/update-category.dto';
 
 @Controller('categories')
 @UseGuards(JwtAuthGuard)
@@ -31,8 +24,7 @@ export class CategoriesController {
   @Post()
   async create(
     @CurrentUser() user: AuthUser,
-    @Body(new ZodValidationPipe(createCategorySchema))
-    createCategoryDto: CreateCategoryDto,
+    @Body() createCategoryDto: CreateCategoryDto,
   ): Promise<{ message: string; data: CategoryDocument }> {
     const category = await this.categoriesService.create(
       user.userId,
@@ -67,8 +59,7 @@ export class CategoriesController {
   async update(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
-    @Body(new ZodValidationPipe(updateCategorySchema))
-    updateCategoryDto: UpdateCategoryDto,
+    @Body() updateCategoryDto: UpdateCategoryDto,
   ): Promise<{ message: string; data: CategoryDocument }> {
     const category = await this.categoriesService.update(
       id,

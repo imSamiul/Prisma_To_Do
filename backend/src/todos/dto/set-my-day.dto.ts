@@ -1,7 +1,6 @@
-import { z } from 'zod';
+import { IsBoolean } from 'class-validator';
 
-export const setMyDaySchema = z.object({
-  inMyDay: z.boolean(),
-});
-
-export type SetMyDayDto = z.infer<typeof setMyDaySchema>;
+export class SetMyDayDto {
+  @IsBoolean()
+  inMyDay!: boolean;
+}

@@ -3,29 +3,32 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Types } from 'mongoose';
 import { Category, CategoryDocument } from './schemas/category.schema';
-import { Todo, TodoDocument } from '../todos/schemas/todo.schema';
+import { CategoriesRepository } from './categories.repository';
+import { TodosRepository } from '../todos/todos.repository';
 import {
   SYSTEM_CATEGORIES,
   SYSTEM_CATEGORY_NAMES,
-  DEFAULT_CATEGORY_SLUG,
 } from './system-categories';
 
 @Injectable()
 export class CategoriesService {
   constructor(
-    @InjectModel(Category.name) private categoryModel: Model<CategoryDocument>,
-    @InjectModel(Todo.name) private todoModel: Model<TodoDocument>,
+    private readonly categoriesRepository: CategoriesRepository,
+    @Inject(forwardRef(() => TodosRepository))
+    private readonly todosRepository: TodosRepository,
   ) {}
 
   async ensureSystemCategories(userId: string): Promise<void> {
-    const existing = await this.categoryModel
-      .find({ userId, isSystem: true })
-      .select('slug')
-      .lean();
+    await this.reconcileDuplicateSystemCategories(userId);
+
+    const existing = await this.categoriesRepository.findSystemCategories(
+      userId,
+    );
     const existingSlugs = new Set(
       existing.map((category) => category.slug).filter(Boolean),
     );
@@ -36,7 +39,7 @@ export class CategoriesService {
 
     if (missing.length === 0) return;
 
-    await this.categoryModel.insertMany(
+    await this.categoriesRepository.insertMany(
       missing.map((category) => ({
         userId,
         name: category.name,
@@ -45,6 +48,48 @@ export class CategoriesService {
         isSystem: true,
       })),
     );
+  }
+
+  /**
+   * Older writes stored userId as string and created duplicate system lists.
+   * Keep one canonical list per slug, move todos onto it, delete the rest.
+   */
+  private async reconcileDuplicateSystemCategories(
+    userId: string,
+  ): Promise<void> {
+    const systemCategories =
+      await this.categoriesRepository.findSystemCategories(userId);
+
+    for (const system of SYSTEM_CATEGORIES) {
+      const duplicates = systemCategories.filter(
+        (category) => category.slug === system.slug,
+      );
+      if (duplicates.length <= 1) continue;
+
+      duplicates.sort((a, b) => {
+        const aIsObjectId = a.userId instanceof Types.ObjectId;
+        const bIsObjectId = b.userId instanceof Types.ObjectId;
+        if (aIsObjectId !== bIsObjectId) {
+          return aIsObjectId ? -1 : 1;
+        }
+        return (
+          a._id.getTimestamp().getTime() - b._id.getTimestamp().getTime()
+        );
+      });
+
+      const [canonical, ...extras] = duplicates;
+      for (const duplicate of extras) {
+        await this.todosRepository.reassignCategory(
+          String(duplicate._id),
+          String(canonical._id),
+          userId,
+        );
+        await this.categoriesRepository.delete(duplicate);
+      }
+    }
+
+    await this.categoriesRepository.normalizeUserIds(userId);
+    await this.todosRepository.normalizeUserIds(userId);
   }
 
   async create(
@@ -62,7 +107,7 @@ export class CategoriesService {
       );
     }
 
-    return this.categoryModel.create({
+    return this.categoriesRepository.create({
       userId,
       name: name.trim(),
       description,
@@ -73,7 +118,7 @@ export class CategoriesService {
   async findByUserId(userId: string): Promise<CategoryDocument[]> {
     await this.ensureSystemCategories(userId);
 
-    const categories = await this.categoryModel.find({ userId });
+    const categories = await this.categoriesRepository.findByUserId(userId);
 
     const systemOrder = SYSTEM_CATEGORIES.map((category) => category.slug);
     const system: CategoryDocument[] = [];
@@ -91,11 +136,7 @@ export class CategoriesService {
 
   async getDefaultCategory(userId: string): Promise<CategoryDocument> {
     await this.ensureSystemCategories(userId);
-    const tasks = await this.categoryModel.findOne({
-      userId,
-      slug: DEFAULT_CATEGORY_SLUG,
-      isSystem: true,
-    });
+    const tasks = await this.categoriesRepository.findDefaultCategory(userId);
     if (!tasks) {
       throw new NotFoundException('Default Tasks list not found');
     }
@@ -103,9 +144,10 @@ export class CategoriesService {
   }
 
   async findByIdForUser(id: string, userId: string): Promise<CategoryDocument> {
-    const category = Types.ObjectId.isValid(id)
-      ? await this.categoryModel.findOne({ _id: id, userId })
-      : null;
+    const category = await this.categoriesRepository.findByIdForUser(
+      id,
+      userId,
+    );
     if (!category) {
       throw new NotFoundException(`Category with id ${id} not found`);
     }
@@ -138,7 +180,7 @@ export class CategoriesService {
       category.description = data.description;
     }
 
-    return category.save();
+    return this.categoriesRepository.save(category);
   }
 
   async delete(id: string, userId: string): Promise<void> {
@@ -147,7 +189,7 @@ export class CategoriesService {
       throw new ForbiddenException('Built-in lists cannot be deleted');
     }
 
-    await this.todoModel.deleteMany({ categoryId: id, userId });
-    await category.deleteOne();
+    await this.todosRepository.deleteManyByCategory(id, userId);
+    await this.categoriesRepository.delete(category);
   }
 }

@@ -1,15 +1,14 @@
 import {
   ConflictException,
+  Inject,
   Injectable,
   UnauthorizedException,
+  forwardRef,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
-import { Category, CategoryDocument } from '../categories/schemas/category.schema';
-import { SYSTEM_CATEGORIES } from '../categories/system-categories';
+import { CategoriesService } from '../categories/categories.service';
 import { AuthUser, JwtPayload } from './types/jwt-payload';
 
 @Injectable()
@@ -17,7 +16,8 @@ export class AuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
-    @InjectModel(Category.name) private categoryModel: Model<CategoryDocument>,
+    @Inject(forwardRef(() => CategoriesService))
+    private categoriesService: CategoriesService,
   ) {}
 
   async register(email: string, password: string): Promise<AuthUser> {
@@ -29,20 +29,15 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(password, 10);
     const user = await this.usersService.create(email, passwordHash);
 
-    await this.categoryModel.insertMany(
-      SYSTEM_CATEGORIES.map((category) => ({
-        userId: user.id,
-        name: category.name,
-        description: category.description,
-        slug: category.slug,
-        isSystem: true,
-      })),
-    );
+    await this.categoriesService.ensureSystemCategories(user.id);
 
     return { userId: user.id, email: user.email };
   }
 
-  async login(email: string, password: string): Promise<{ user: AuthUser; accessToken: string }> {
+  async login(
+    email: string,
+    password: string,
+  ): Promise<{ user: AuthUser; accessToken: string }> {
     const user = await this.usersService.findByEmail(email);
     if (!user) {
       throw new UnauthorizedException('Invalid email or password');

@@ -1,14 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
 import { Todo, TodoDocument } from './schemas/todo.schema';
+import { TodosRepository } from './todos.repository';
 import { CategoriesService } from '../categories/categories.service';
 
 @Injectable()
 export class TodosService {
   constructor(
-    @InjectModel(Todo.name) private todoModel: Model<TodoDocument>,
-    private categoriesService: CategoriesService,
+    private readonly todosRepository: TodosRepository,
+    private readonly categoriesService: CategoriesService,
   ) {}
 
   async create(
@@ -25,7 +24,7 @@ export class TodosService {
     // My Day is a smart list: new tasks land in Tasks and are flagged for today.
     if (category.slug === 'my-day') {
       const tasks = await this.categoriesService.getDefaultCategory(userId);
-      return this.todoModel.create({
+      return this.todosRepository.create({
         userId,
         categoryId: tasks.id,
         title,
@@ -34,7 +33,12 @@ export class TodosService {
       });
     }
 
-    return this.todoModel.create({ userId, categoryId, title, description });
+    return this.todosRepository.create({
+      userId,
+      categoryId,
+      title,
+      description,
+    });
   }
 
   async findAllForUser(
@@ -42,24 +46,17 @@ export class TodosService {
     options?: { categoryId?: string; view?: string },
   ): Promise<TodoDocument[]> {
     if (options?.view === 'my-day') {
-      return this.todoModel
-        .find({ userId, inMyDay: true })
-        .sort({ createdAt: -1 });
+      return this.todosRepository.findByUserId(userId, { inMyDay: true });
     }
 
-    return this.todoModel
-      .find({
-        userId,
-        ...(options?.categoryId && { categoryId: options.categoryId }),
-      })
-      .sort({ createdAt: -1 });
+    return this.todosRepository.findByUserId(userId, {
+      categoryId: options?.categoryId,
+    });
   }
 
   async findByIdForUser(id: string, userId: string): Promise<TodoDocument> {
     // Always scope by authenticated user — never find by id alone
-    const todo = Types.ObjectId.isValid(id)
-      ? await this.todoModel.findOne({ _id: id, userId })
-      : null;
+    const todo = await this.todosRepository.findByIdForUser(id, userId);
     if (!todo) {
       throw new NotFoundException(`Todo with id ${id} not found`);
     }
@@ -73,18 +70,18 @@ export class TodosService {
   ): Promise<TodoDocument> {
     const todo = await this.findByIdForUser(id, userId);
     Object.assign(todo, data);
-    return todo.save();
+    return this.todosRepository.save(todo);
   }
 
   async delete(id: string, userId: string): Promise<void> {
     const todo = await this.findByIdForUser(id, userId);
-    await todo.deleteOne();
+    await this.todosRepository.delete(todo);
   }
 
   async toggleComplete(id: string, userId: string): Promise<TodoDocument> {
     const todo = await this.findByIdForUser(id, userId);
     todo.completed = !todo.completed;
-    return todo.save();
+    return this.todosRepository.save(todo);
   }
 
   async setMyDay(
@@ -94,7 +91,7 @@ export class TodosService {
   ): Promise<TodoDocument> {
     const todo = await this.findByIdForUser(id, userId);
     todo.inMyDay = inMyDay;
-    return todo.save();
+    return this.todosRepository.save(todo);
   }
 
   async moveToCategory(
@@ -102,7 +99,6 @@ export class TodosService {
     userId: string,
     categoryId: string,
   ): Promise<TodoDocument> {
-    const todo = await this.findByIdForUser(id, userId);
     const category = await this.categoriesService.findByIdForUser(
       categoryId,
       userId,
@@ -110,11 +106,19 @@ export class TodosService {
 
     // My Day is a smart list — flag the task instead of changing its home list.
     if (category.slug === 'my-day') {
+      const todo = await this.findByIdForUser(id, userId);
       todo.inMyDay = true;
-      return todo.save();
+      return this.todosRepository.save(todo);
     }
 
-    todo.categoryId = category._id as Types.ObjectId;
-    return todo.save();
+    const updated = await this.todosRepository.updateCategory(
+      id,
+      userId,
+      categoryId,
+    );
+    if (!updated) {
+      throw new NotFoundException(`Todo with id ${id} not found`);
+    }
+    return updated;
   }
 }

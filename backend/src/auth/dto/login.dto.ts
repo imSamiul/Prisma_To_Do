@@ -1,8 +1,10 @@
-import { z } from 'zod';
+import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 
-export const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
-});
+export class LoginDto {
+  @IsEmail()
+  email!: string;
 
-export type LoginDto = z.infer<typeof loginSchema>;
+  @IsString()
+  @IsNotEmpty()
+  password!: string;
+}
