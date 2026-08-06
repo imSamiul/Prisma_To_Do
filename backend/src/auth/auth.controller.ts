@@ -11,10 +11,10 @@ import {
 import { Throttle } from '@nestjs/throttler';
 import { Response } from 'express';
 import { AuthService } from './auth.service';
-import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
+import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { AuthUser } from './types/jwt-payload';
 
 const ACCESS_TOKEN_COOKIE = 'access_token';
@@ -36,11 +36,13 @@ export class AuthController {
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  async register(
-    @Body() registerDto: RegisterDto,
-  ): Promise<{ message: string }> {
-    await this.authService.register(registerDto.email, registerDto.password);
-    return { message: 'User registered successfully' };
+  async register(@Body() registerDto: RegisterDto) {
+    console.log('Register DTO:', registerDto);
+    console.log('Register DTO Email:', registerDto.email);
+    console.log('Register DTO Password:', registerDto.password);
+
+    // await this.authService.register(registerDto.email, registerDto.password);
+    // return { message: 'User registered successfully' };
   }
 
   @Post('login')
@@ -55,7 +57,11 @@ export class AuthController {
       loginDto.password,
     );
 
-    response.cookie(ACCESS_TOKEN_COOKIE, accessToken, accessTokenCookieOptions());
+    response.cookie(
+      ACCESS_TOKEN_COOKIE,
+      accessToken,
+      accessTokenCookieOptions(),
+    );
 
     return {
       message: 'Logged in successfully',
@@ -66,9 +72,7 @@ export class AuthController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
-  me(
-    @CurrentUser() user: AuthUser,
-  ): { user: { id: string; email: string } } {
+  me(@CurrentUser() user: AuthUser): { user: { id: string; email: string } } {
     return {
       user: { id: user.userId, email: user.email },
     };
@@ -76,9 +80,7 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  logout(
-    @Res({ passthrough: true }) response: Response,
-  ): { message: string } {
+  logout(@Res({ passthrough: true }) response: Response): { message: string } {
     response.clearCookie(ACCESS_TOKEN_COOKIE, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',

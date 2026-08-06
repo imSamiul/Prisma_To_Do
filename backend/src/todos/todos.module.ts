@@ -1,16 +1,16 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { TodosController } from './todos.controller';
-import { TodosService } from './todos.service';
-import { TodosRepository } from './todos.repository';
-import { CategoriesModule } from '../categories/categories.module';
-import { AuthModule } from '../auth/auth.module';
+import { AuthModule } from 'src/auth/auth.module';
+import { CategoriesModule } from 'src/categories/categories.module';
 import { Todo, TodoSchema } from './schemas/todo.schema';
+import { TodosController } from './todos.controller';
+import { TodosRepository } from './todos.repository';
+import { TodosService } from './todos.service';
 
 @Module({
   imports: [
     forwardRef(() => CategoriesModule),
-    AuthModule,
+    forwardRef(() => AuthModule),
     MongooseModule.forFeature([{ name: Todo.name, schema: TodoSchema }]),
   ],
   controllers: [TodosController],
